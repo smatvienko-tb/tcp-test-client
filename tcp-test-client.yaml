@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tcp-test-client
+spec:
+  serviceName: tcp-test-client
+  replicas: 12
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: tcp-test-client
+  template:
+    metadata:
+      labels:
+        app: tcp-test-client
+    spec:
+      affinity:
+        podAntiAffinity:
+          #          requiredDuringSchedulingIgnoredDuringExecution:
+          #            - labelSelector:
+          #                matchExpressions:
+          #                  - key: "app"
+          #                    operator: In
+          #                    values:
+          #                      - tcp-test-client
+          #              topologyKey: "kubernetes.io/hostname" # no two instances are located on the same host https://kubernetes.io/docs/tutorials/stateful-application/zookeeper/#tolerating-node-failure
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: "app"
+                      operator: In
+                      values:
+                        - tcp-test-client
+                topologyKey: "kubernetes.io/hostname"
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: server
+          imagePullPolicy: Always
+          image: sevlamat/tcp-test-client
+          resources:
+            requests:
+              cpu: 200m
+              memory: 400Mi
+            limits:
+              cpu: 900m
+              memory: 600Mi
+          ports:
+            - containerPort: 8081
+              name: http
+          env:
+            - name: TARGET_HOST
+              value: "52.50.5.45"
+            - name: TARGET_PORT
+              value: "1883"
+            - name: TARGET_CLIENTS
+              value: "27000"
+            - name: SERVER_PORT
+              value: "8081"
+      restartPolicy: Always
